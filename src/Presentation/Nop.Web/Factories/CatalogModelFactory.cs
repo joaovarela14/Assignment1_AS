@@ -9,6 +9,7 @@ using Nop.Core.Domain.Media;
 using Nop.Core.Domain.Seo;
 using Nop.Core.Domain.Vendors;
 using Nop.Core.Events;
+using Nop.Core.Observability;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
 using Nop.Services.Customers;
@@ -1776,6 +1777,14 @@ public partial class CatalogModelFactory : ICatalogModelFactory
                     languageId: workingLanguage.Id,
                     orderBy: (ProductSortingEnum)command.OrderBy,
                     vendorId: vendorId);
+
+                if (products.TotalCount == 0)
+                {
+                    NopTelemetry.RecordCatalogSearchZeroResults(
+                        advancedSearch: searchModel.advs,
+                        pageNumber: command.PageNumber,
+                        pageSize: command.PageSize);
+                }
 
                 //search term statistics
                 if (!string.IsNullOrEmpty(searchTerms))

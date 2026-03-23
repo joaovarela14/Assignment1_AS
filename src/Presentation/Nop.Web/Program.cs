@@ -21,6 +21,7 @@ public partial class Program
 
         //load application settings
         builder.Services.ConfigureApplicationSettings(builder);
+        builder.ConfigureNopObservability();
 
         var appSettings = Singleton<AppSettings>.Instance;
         var useAutofac = appSettings.Get<CommonConfig>().UseAutofac;
@@ -44,6 +45,7 @@ public partial class Program
         var app = builder.Build();
 
         //configure the application HTTP request pipeline
+        app.UseNopObservability();
         app.ConfigureRequestPipeline();
         await app.PublishAppStartedEventAsync();
 

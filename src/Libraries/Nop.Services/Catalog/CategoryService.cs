@@ -1,8 +1,10 @@
-﻿using Nop.Core;
+﻿using System.Diagnostics;
+using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Discounts;
+using Nop.Core.Observability;
 using Nop.Data;
 using Nop.Services.Customers;
 using Nop.Services.Discounts;
@@ -426,13 +428,18 @@ public partial class CategoryService : ICategoryService
     /// </returns>
     public virtual async Task<IList<int>> GetChildCategoryIdsAsync(int parentCategoryId, int storeId = 0, bool showHidden = false)
     {
+        using var activity = NopTelemetry.ActivitySource.StartActivity("catalog.category.children", ActivityKind.Internal);
+        activity?.SetTag("catalog.category.parent_id", parentCategoryId);
+        activity?.SetTag("catalog.category.store_id", storeId);
+        activity?.SetTag("catalog.category.show_hidden", showHidden);
+
         var cacheKey = _staticCacheManager.PrepareKeyForDefaultCache(NopCatalogDefaults.CategoriesChildIdsCacheKey,
             parentCategoryId,
             await _customerService.GetCustomerRoleIdsAsync(await _workContext.GetCurrentCustomerAsync()),
             storeId,
             showHidden);
 
-        return await _staticCacheManager.GetAsync(cacheKey, async () =>
+        var categoryIds = await _staticCacheManager.GetAsync(cacheKey, async () =>
         {
             //little hack for performance optimization
             //there's no need to invoke "GetAllCategoriesByParentCategoryId" multiple times (extra SQL commands) to load childs
@@ -454,6 +461,10 @@ public partial class CategoryService : ICategoryService
 
             return categoryIds;
         });
+
+        activity?.SetTag("catalog.category.children_count", categoryIds.Count);
+
+        return categoryIds;
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 ﻿using System.Data.SqlTypes;
+using System.Diagnostics;
 using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Domain.Catalog;
@@ -9,6 +10,7 @@ using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Domain.Stores;
 using Nop.Core.Infrastructure;
+using Nop.Core.Observability;
 using Nop.Data;
 using Nop.Services.Customers;
 using Nop.Services.Localization;
@@ -551,7 +553,13 @@ public partial class ProductService : IProductService
     /// </returns>
     public virtual async Task<Product> GetProductByIdAsync(int productId)
     {
-        return await _productRepository.GetByIdAsync(productId, cache => default);
+        using var activity = NopTelemetry.ActivitySource.StartActivity("catalog.product.load", ActivityKind.Internal);
+        activity?.SetTag("catalog.product.id", productId);
+
+        var product = await _productRepository.GetByIdAsync(productId, cache => default);
+        activity?.SetTag("catalog.product.found", product != null);
+
+        return product;
     }
 
     /// <summary>
@@ -829,6 +837,18 @@ public partial class ProductService : IProductService
         bool showHidden = false,
         bool? overridePublished = null)
     {
+        using var activity = NopTelemetry.ActivitySource.StartActivity("catalog.product.search", ActivityKind.Internal);
+        activity?.SetTag("catalog.search.page_index", pageIndex);
+        activity?.SetTag("catalog.search.page_size", pageSize);
+        activity?.SetTag("catalog.search.has_keywords", !string.IsNullOrWhiteSpace(keywords));
+        activity?.SetTag("catalog.search.keyword_length", keywords?.Trim().Length ?? 0);
+        activity?.SetTag("catalog.search.store_id", storeId);
+        activity?.SetTag("catalog.search.vendor_id", vendorId);
+        activity?.SetTag("catalog.search.show_hidden", showHidden);
+        activity?.SetTag("catalog.search.category_count", categoryIds?.Count ?? 0);
+        activity?.SetTag("catalog.search.manufacturer_count", manufacturerIds?.Count ?? 0);
+        activity?.SetTag("catalog.search.product_tag_id", productTagId);
+
         //some databases don't support int.MaxValue
         if (pageSize == int.MaxValue)
             pageSize = int.MaxValue - 1;
@@ -1128,12 +1148,19 @@ public partial class ProductService : IProductService
                                  from os in orderSeq.DefaultIfEmpty()
                                  orderby os == null ? int.MaxValue : os.ind
                                  select p;
-                                 
 
-            return await sortedProducts.ToPagedListAsync(pageIndex, pageSize);
+            var pagedProducts = await sortedProducts.ToPagedListAsync(pageIndex, pageSize);
+            activity?.SetTag("catalog.search.result_total", pagedProducts.TotalCount);
+
+            return pagedProducts;
         }
 
-        return await productsQuery.OrderBy(_localizedPropertyRepository, await _workContext.GetWorkingLanguageAsync(), orderBy).ToPagedListAsync(pageIndex, pageSize);
+        var results = await productsQuery
+            .OrderBy(_localizedPropertyRepository, await _workContext.GetWorkingLanguageAsync(), orderBy)
+            .ToPagedListAsync(pageIndex, pageSize);
+        activity?.SetTag("catalog.search.result_total", results.TotalCount);
+
+        return results;
     }
 
     /// <summary>

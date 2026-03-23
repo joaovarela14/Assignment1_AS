@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.FilterLevels;
 using Nop.Core.Domain.Media;
 using Nop.Core.Domain.Vendors;
 using Nop.Core.Http;
+using Nop.Core.Observability;
 using Nop.Core.Rss;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
@@ -360,10 +362,14 @@ public partial class CatalogController : BasePublicController
     [SaveLastContinueShoppingPage]
     public virtual async Task<IActionResult> Search(SearchModel model, CatalogProductsCommand command)
     {
+        using var activity = StartCatalogSearchActivity(model, command, "catalog.search");
+
         if (model == null)
             model = new SearchModel();
 
         model = await _catalogModelFactory.PrepareSearchModelAsync(model, command);
+        activity?.SetTag("catalog.search.has_warning", !string.IsNullOrWhiteSpace(model.CatalogProductsModel?.WarningMessage));
+        activity?.SetTag("catalog.search.result_total", model.CatalogProductsModel?.TotalItems ?? 0);
 
         return View(model);
     }
@@ -409,12 +415,31 @@ public partial class CatalogController : BasePublicController
     [HttpPost]
     public virtual async Task<IActionResult> SearchProducts(SearchModel searchModel, CatalogProductsCommand command)
     {
+        using var activity = StartCatalogSearchActivity(searchModel, command, "catalog.search.refresh");
+
         if (searchModel == null)
             searchModel = new SearchModel();
 
         var model = await _catalogModelFactory.PrepareSearchProductsModelAsync(searchModel, command);
+        activity?.SetTag("catalog.search.result_total", model.TotalItems);
 
         return PartialView("_ProductsInGridOrLines", model);
+    }
+
+    private static Activity StartCatalogSearchActivity(SearchModel model, CatalogProductsCommand command, string operationName)
+    {
+        var activity = NopTelemetry.ActivitySource.StartActivity(operationName, ActivityKind.Internal);
+        if (activity == null)
+            return null;
+
+        var query = model?.q?.Trim();
+        activity.SetTag("catalog.search.advanced", model?.advs ?? false);
+        activity.SetTag("catalog.search.has_query", !string.IsNullOrWhiteSpace(query));
+        activity.SetTag("catalog.search.query_length", query?.Length ?? 0);
+        activity.SetTag("catalog.search.page_number", command?.PageNumber ?? 1);
+        activity.SetTag("catalog.search.page_size", command?.PageSize ?? 0);
+
+        return activity;
     }
 
     #endregion

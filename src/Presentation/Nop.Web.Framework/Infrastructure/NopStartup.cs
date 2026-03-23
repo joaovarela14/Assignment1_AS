@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,7 @@ using Nop.Services.Vendors;
 using Nop.Web.Framework.Factories;
 using Nop.Web.Framework.Menu;
 using Nop.Web.Framework.Mvc.Routing;
+using Nop.Web.Framework.Observability;
 using Nop.Web.Framework.Themes;
 using Nop.Web.Framework.UI;
 using TaskScheduler = Nop.Services.ScheduleTasks.TaskScheduler;
@@ -166,7 +168,11 @@ public partial class NopStartup : INopStartup
         services.AddScoped<ICustomerReportService, CustomerReportService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<IAclService, AclService>();
-        services.AddScoped<IPriceCalculationService, PriceCalculationService>();
+        services.AddScoped<PriceCalculationService>();
+        services.AddScoped<IPriceCalculationService>(serviceProvider =>
+            new ObservedPriceCalculationService(
+                serviceProvider.GetRequiredService<PriceCalculationService>(),
+                serviceProvider.GetRequiredService<IHttpContextAccessor>()));
         services.AddScoped<IGeoLookupService, GeoLookupService>();
         services.AddScoped<ICountryService, CountryService>();
         services.AddScoped<ICurrencyService, CurrencyService>();
