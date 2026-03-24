@@ -19,7 +19,7 @@ Prerequisite:
 
 Script path:
 
-- [catalog-search-and-view.js](/home/varela/Desktop/AS/Derivables/Individual/Assignment1_AS/loadtests/catalog-search-and-view.js)
+- [catalog-search-and-view.js](../loadtests/catalog-search-and-view.js)
 
 ## Run with Docker
 
@@ -65,6 +65,7 @@ docker run --rm \
 Expected signals:
 
 - `nopcommerce_catalog_search_zero_results_total` increases because the script periodically sends a zero-results search.
+- the empty-search percentage panel rises because the dashboard compares zero-result searches with total searches over the last 5 minutes.
 - `nopcommerce_product_view_pricing_latency_seconds` gains samples because the script opens product detail pages.
 - The error-rate panel stays near zero under healthy load.
 - Jaeger shows repeated traces for `catalog.search`, `catalog.product.search`, `catalog.product.load`, and `catalog.product.view`.
