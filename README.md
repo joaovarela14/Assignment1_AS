@@ -64,7 +64,12 @@ It includes:
 - a percentage panel for empty search results in the last 5 minutes
 - an average panel for pricing latency
 - a p95 panel for pricing latency
-- an error-rate panel for the selected flow
+- three HTTP error percentage panels for the store:
+  - `404 Not Found`
+  - `Other 4xx`
+  - `5xx Server Error`
+
+Each error panel shows the last 5 minutes and turns red above `0.1%`.
 
 Traces are viewed directly in Jaeger at `http://localhost:16686`.
 

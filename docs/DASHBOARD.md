@@ -79,7 +79,7 @@ Why it matters:
 
 - p95 is useful when a few slow requests are hidden by a good average
 
-### Catalog Flow Error Rate
+### 404 Not Found Percentage (5m)
 
 Metric source:
 
@@ -87,11 +87,51 @@ Metric source:
 
 What it shows:
 
-- the error rate for the selected catalog flow
+- the percentage of store requests in the last 5 minutes that ended with `404`
 
 Why it matters:
 
-- it shows whether the flow is failing, not only whether it is slow
+- it highlights broken links, wrong product URLs, and missing pages
+- it can also reveal missing static files or theme assets
+
+### Other 4xx Error Percentage (5m)
+
+Metric source:
+
+- `http_server_request_duration_seconds_count`
+
+What it shows:
+
+- the percentage of store requests in the last 5 minutes that ended with `4xx`, excluding `404`
+
+Why it matters:
+
+- it highlights client-side failures such as bad requests, validation failures, or permission problems
+- it helps separate broken links from other user-facing request issues
+
+### 5xx Server Error Percentage (5m)
+
+Metric source:
+
+- `http_server_request_duration_seconds_count`
+
+What it shows:
+
+- the percentage of store requests in the last 5 minutes that ended with `5xx`
+
+Why it matters:
+
+- it highlights server-side faults such as application exceptions, plugin failures, or database problems
+- it is the clearest signal that the store is unhealthy
+
+### Error panel threshold
+
+All three error panels:
+
+- show a percentage, not a rate line
+- use the last 5 minutes of traffic
+- exclude the `/metrics` endpoint from the denominator
+- turn red above `0.1%`
 
 ### Traces
 
@@ -129,6 +169,7 @@ Expected result:
 
 - `nopcommerce_catalog_search_zero_results_total` increases
 - the percentage panel shows a value above `0%`
+- the three error panels should still stay near `0%`
 
 ### Open a product page
 
@@ -165,6 +206,24 @@ nopcommerce_product_view_pricing_latency_seconds_count
 
 ```promql
 histogram_quantile(0.95, sum by (le, pricing_operation) (rate(nopcommerce_product_view_pricing_latency_seconds_bucket[5m])))
+```
+
+### 404 percentage in the last 5 minutes
+
+```promql
+100 * ((sum(increase(http_server_request_duration_seconds_count{http_route!="/metrics",http_response_status_code="404"}[5m])) or vector(0)) / clamp_min((sum(increase(http_server_request_duration_seconds_count{http_route!="/metrics"}[5m])) or vector(0)), 1))
+```
+
+### Other 4xx percentage in the last 5 minutes
+
+```promql
+100 * (clamp_min(((sum(increase(http_server_request_duration_seconds_count{http_route!="/metrics",http_response_status_code=~"4.."}[5m])) or vector(0)) - (sum(increase(http_server_request_duration_seconds_count{http_route!="/metrics",http_response_status_code="404"}[5m])) or vector(0))), 0) / clamp_min((sum(increase(http_server_request_duration_seconds_count{http_route!="/metrics"}[5m])) or vector(0)), 1))
+```
+
+### 5xx percentage in the last 5 minutes
+
+```promql
+100 * ((sum(increase(http_server_request_duration_seconds_count{http_route!="/metrics",http_response_status_code=~"5.."}[5m])) or vector(0)) / clamp_min((sum(increase(http_server_request_duration_seconds_count{http_route!="/metrics"}[5m])) or vector(0)), 1))
 ```
 
 ## If A Panel Is Empty

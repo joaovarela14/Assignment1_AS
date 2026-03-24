@@ -67,5 +67,6 @@ Expected signals:
 - `nopcommerce_catalog_search_zero_results_total` increases because the script periodically sends a zero-results search.
 - the empty-search percentage panel rises because the dashboard compares zero-result searches with total searches over the last 5 minutes.
 - `nopcommerce_product_view_pricing_latency_seconds` gains samples because the script opens product detail pages.
-- The error-rate panel stays near zero under healthy load.
+- the `404`, `Other 4xx`, and `5xx` error percentage panels stay near `0%` under healthy load.
+- each error panel turns red if it goes above `0.1%`.
 - Jaeger shows repeated traces for `catalog.search`, `catalog.product.search`, `catalog.product.load`, and `catalog.product.view`.

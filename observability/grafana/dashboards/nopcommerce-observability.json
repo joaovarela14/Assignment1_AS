@@ -126,9 +126,18 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -159,13 +168,13 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(nopcommerce_catalog_search_zero_results_total[5m]))",
-          "legendFormat": "empty searches / sec",
+          "expr": "100 * ((sum(increase(nopcommerce_catalog_search_zero_results_total[5m])) or vector(0)) / clamp_min((sum(increase(nopcommerce_catalog_search_total[5m])) or vector(0)), 1))",
+          "legendFormat": "zero-result searches %",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Empty Search Result Rate",
+      "title": "Empty Search Result Percentage (5m)",
       "type": "timeseries"
     },
     {
@@ -360,31 +369,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "ratio",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 4,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
@@ -395,37 +380,38 @@
                 "value": null
               },
               {
-                "color": "orange",
-                "value": 0.02
-              },
-              {
                 "color": "red",
-                "value": 0.05
+                "value": 0.1
               }
             ]
           },
-          "unit": "percentunit"
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
         "y": 17
       },
       "id": 5,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "11.0.0",
       "targets": [
@@ -435,30 +421,152 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\",http_route=~\"search|ProductDetails|product|Product\"}[5m])) / clamp_min(sum(rate(http_server_request_duration_seconds_count{http_route=~\"search|ProductDetails|product|Product\"}[5m])), 0.0001)",
-          "legendFormat": "flow error rate",
+          "expr": "100 * ((sum(increase(http_server_request_duration_seconds_count{http_route!=\"/metrics\",http_response_status_code=\"404\"}[5m])) or vector(0)) / clamp_min((sum(increase(http_server_request_duration_seconds_count{http_route!=\"/metrics\"}[5m])) or vector(0)), 1))",
+          "legendFormat": "404 errors",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Catalog Flow Error Rate",
-      "type": "timeseries"
+      "title": "404 Not Found Percentage (5m)",
+      "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
+        "w": 8,
+        "x": 8,
         "y": 17
       },
       "id": 6,
       "options": {
-        "content": "<div style=\"font-size:14px;margin-bottom:8px;\">Trace view for the selected flow. Use the embedded Jaeger search below or open Jaeger full-screen at <a href=\"http://localhost:16686/search?service=Nop.Web\" target=\"_blank\">localhost:16686</a>.</div><iframe src=\"http://localhost:16686/search?service=Nop.Web\" width=\"100%\" height=\"560\" frameborder=\"0\"></iframe>",
-        "mode": "html"
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "11.0.0",
-      "title": "Trace View (Jaeger)",
-      "type": "text"
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * (clamp_min(((sum(increase(http_server_request_duration_seconds_count{http_route!=\"/metrics\",http_response_status_code=~\"4..\"}[5m])) or vector(0)) - (sum(increase(http_server_request_duration_seconds_count{http_route!=\"/metrics\",http_response_status_code=\"404\"}[5m])) or vector(0))), 0) / clamp_min((sum(increase(http_server_request_duration_seconds_count{http_route!=\"/metrics\"}[5m])) or vector(0)), 1))",
+          "legendFormat": "other 4xx errors",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Other 4xx Error Percentage (5m)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 17
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * ((sum(increase(http_server_request_duration_seconds_count{http_route!=\"/metrics\",http_response_status_code=~\"5..\"}[5m])) or vector(0)) / clamp_min((sum(increase(http_server_request_duration_seconds_count{http_route!=\"/metrics\"}[5m])) or vector(0)), 1))",
+          "legendFormat": "5xx errors",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "5xx Server Error Percentage (5m)",
+      "type": "stat"
     }
   ],
   "refresh": "10s",
@@ -479,6 +587,6 @@
   "timezone": "browser",
   "title": "nopCommerce Observability",
   "uid": "nopcommerce-observability",
-  "version": 1,
+  "version": 4,
   "weekStart": ""
 }
