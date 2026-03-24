@@ -14,6 +14,11 @@ public static class NopTelemetry
     public static readonly ActivitySource ActivitySource = new(ActivitySourceName, NopVersion.FULL_VERSION);
     public static readonly Meter Meter = new(MeterName, NopVersion.FULL_VERSION);
 
+    private static readonly Counter<long> _catalogSearchCounter =
+        Meter.CreateCounter<long>(
+            "nopcommerce_catalog_search_total",
+            description: "Number of catalog searches executed.");
+
     private static readonly Counter<long> _catalogSearchZeroResultsCounter =
         Meter.CreateCounter<long>(
             "nopcommerce_catalog_search_zero_results_total",
@@ -25,14 +30,16 @@ public static class NopTelemetry
             unit: "s",
             description: "Time spent calculating prices and discounts during a product view.");
 
+    public static void RecordCatalogSearch(bool advancedSearch, int pageNumber, int pageSize)
+    {
+        var tags = CreateCatalogSearchTags(advancedSearch, pageNumber, pageSize);
+
+        _catalogSearchCounter.Add(1, tags);
+    }
+
     public static void RecordCatalogSearchZeroResults(bool advancedSearch, int pageNumber, int pageSize)
     {
-        var tags = new TagList
-        {
-            { "catalog.search.advanced", advancedSearch },
-            { "catalog.search.page_number", pageNumber },
-            { "catalog.search.page_size", pageSize }
-        };
+        var tags = CreateCatalogSearchTags(advancedSearch, pageNumber, pageSize);
 
         _catalogSearchZeroResultsCounter.Add(1, tags);
     }
@@ -45,5 +52,15 @@ public static class NopTelemetry
         };
 
         _productViewPricingLatencyHistogram.Record(durationSeconds, tags);
+    }
+
+    private static TagList CreateCatalogSearchTags(bool advancedSearch, int pageNumber, int pageSize)
+    {
+        return new TagList
+        {
+            { "catalog.search.advanced", advancedSearch },
+            { "catalog.search.page_number", pageNumber },
+            { "catalog.search.page_size", pageSize }
+        };
     }
 }

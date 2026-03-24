@@ -1778,6 +1778,11 @@ public partial class CatalogModelFactory : ICatalogModelFactory
                     orderBy: (ProductSortingEnum)command.OrderBy,
                     vendorId: vendorId);
 
+                NopTelemetry.RecordCatalogSearch(
+                    advancedSearch: searchModel.advs,
+                    pageNumber: command.PageNumber,
+                    pageSize: command.PageSize);
+
                 if (products.TotalCount == 0)
                 {
                     NopTelemetry.RecordCatalogSearchZeroResults(
